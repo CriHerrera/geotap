@@ -6,11 +6,12 @@
 cmd/geotap/
   main.go               Entry point, CLI dispatcher
   scan.go               Headless scan command
+  match.go              Fuzzy match + photo fetch command
   export.go             DB to CSV export command
 
 internal/
   model/
-    business.go         Business struct (21 fields), SearchParams, Sector
+    business.go         Business struct (22 fields incl photos), SearchParams, Sector
 
   engine/
     geo/
@@ -24,10 +25,14 @@ internal/
       client.go         HTTP client: utls TLS fingerprint, user agent rotation, backoff
       worker.go         Concurrent scraper: worker pool, stats, geo filter pipeline
       parser_map.go     Google Maps tbm=map response parser
+      parser_place.go   Place detail page parser: photo gallery extraction
       pb_template.go    Protobuf parameter builder for search URLs
 
     storage/
-      sqlite.go         SQLite store: InsertBatch (dedup via UNIQUE), Count, queries
+      sqlite.go         SQLite store: InsertBatch (dedup via UNIQUE), UpdatePhotos, Count
+
+  match/
+    fuzzy.go            Jaro-Winkler similarity with accent normalization (NFD)
 
   tui/
     app.go              Root bubbletea model, view routing

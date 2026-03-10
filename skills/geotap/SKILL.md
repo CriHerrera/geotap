@@ -54,6 +54,13 @@ geotap scan -queries "restaurantes" -country Chile -output ./projects
 geotap scan -queries "cafes,bars" -lat 40.4168 -lng -3.7038 -radius 5 -output ./projects
 ```
 
+### Match by name + fetch photos
+
+```bash
+geotap match -lat -33.45 -lng -70.66 -name "Colegio San José" -output ./results
+geotap match -lat 40.42 -lng -3.70 -name "IES Cervantes" -threshold 60 -query schools -output ./results
+```
+
 ### Export to CSV
 
 ```bash
@@ -83,9 +90,22 @@ geotap
 | `-lang`        | en       | Search language              |
 | `-proxy`       |          | HTTP/SOCKS5 proxy URL        |
 
+## Key Flags (match)
+
+| Flag           | Default  | Description                              |
+| -------------- | -------- | ---------------------------------------- |
+| `-lat`/`-lng`  | required | Center coordinates                       |
+| `-name`        | required | Name to fuzzy-match (Jaro-Winkler)       |
+| `-output`      | required | Output directory                         |
+| `-query`       | schools  | Google Maps search term                  |
+| `-radius`      | 0.5      | Search radius in km                      |
+| `-threshold`   | 50       | Minimum similarity % (0-100)             |
+| `-zoom`        | 16       | Grid level (16 = ~500m precision)        |
+| `-photo-delay` | 1.5      | Seconds between photo requests           |
+
 ## Data Fields Extracted
 
-Each business record contains: name, rating, review_count, category, categories, address, city, postal_code, country_code, lat, lng, phone, website, google_url, description, price_range, cid, place_id, open_hours, thumbnail, query.
+Each business record contains: name, rating, review_count, category, categories, address, city, postal_code, country_code, lat, lng, phone, website, google_url, description, price_range, cid, place_id, open_hours, thumbnail, photos, query.
 
 See [cli-reference.md](references/cli-reference.md) for full flag details.
 See [architecture.md](references/architecture.md) for codebase structure.
