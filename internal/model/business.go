@@ -32,6 +32,7 @@ type Business struct {
 	PostalCode  string  `json:"postal_code"`
 	CountryCode string  `json:"country_code"`
 	Query       string  `json:"query"`
+	Photos      string  `json:"photos"` // JSON array of photo URLs
 }
 
 // SearchParams holds all configuration for a scraping session.

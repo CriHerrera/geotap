@@ -175,6 +175,35 @@ func (c *Client) ConsecutiveRateLimits() int64 {
 	return c.rateLimits.Load()
 }
 
+// FetchPlace fetches the Google Maps place detail page for a given Place ID.
+// Returns the raw HTML body which contains embedded JSON with photo URLs.
+func (c *Client) FetchPlace(placeID string) ([]byte, error) {
+	reqURL := "https://www.google.com/maps/place/?q=place_id:" + placeID + "&hl=" + c.lang
+	return c.doRequestWithRetry(reqURL)
+}
+
+// doRequestWithRetry wraps doRequest with the same retry logic as SearchMap.
+func (c *Client) doRequestWithRetry(reqURL string) ([]byte, error) {
+	var lastErr error
+	for attempt := range maxRetries {
+		body, err := c.doRequest(reqURL)
+		if err == nil {
+			return body, nil
+		}
+		lastErr = err
+		if _, ok := err.(*RateLimitError); !ok {
+			return nil, err
+		}
+		backoff := baseBackoff * time.Duration(1<<uint(attempt))
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+		jitter := time.Duration(float64(backoff) * jitterFactor * rand.Float64())
+		time.Sleep(backoff + jitter)
+	}
+	return nil, lastErr
+}
+
 func (c *Client) doRequest(reqURL string) ([]byte, error) {
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {

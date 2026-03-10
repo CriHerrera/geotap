@@ -66,6 +66,7 @@ func createSchema(db *sql.DB) error {
 		postal_code TEXT,
 		country_code TEXT,
 		query TEXT NOT NULL,
+		photos TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE(cid, query)
 	);
@@ -94,8 +95,8 @@ func (s *Store) InsertBatch(businesses []model.Business) (int, error) {
 		INSERT OR IGNORE INTO businesses
 		(name, rating, review_count, category, address, price_range, lat, lng, cid,
 		 phone, website, google_url, description, place_id,
-		 open_hours, thumbnail, categories, city, postal_code, country_code, query)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		 open_hours, thumbnail, categories, city, postal_code, country_code, query, photos)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 	`)
 	if err != nil {
 		tx.Rollback()
@@ -110,7 +111,7 @@ func (s *Store) InsertBatch(businesses []model.Business) (int, error) {
 			b.Lat, b.Lng, b.CID, b.Phone, b.Website,
 			b.GoogleURL, b.Description, b.PlaceID,
 			b.OpenHours, b.Thumbnail, b.Categories,
-			b.City, b.PostalCode, b.CountryCode, b.Query,
+			b.City, b.PostalCode, b.CountryCode, b.Query, b.Photos,
 		)
 		if err != nil {
 			continue
@@ -124,6 +125,14 @@ func (s *Store) InsertBatch(businesses []model.Business) (int, error) {
 	}
 
 	return inserted, nil
+}
+
+// UpdatePhotos sets the photos JSON array for a business identified by place_id and query.
+func (s *Store) UpdatePhotos(placeID, query, photosJSON string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, err := s.db.Exec("UPDATE businesses SET photos = ? WHERE place_id = ? AND query = ?", photosJSON, placeID, query)
+	return err
 }
 
 func (s *Store) Count() (int, error) {
