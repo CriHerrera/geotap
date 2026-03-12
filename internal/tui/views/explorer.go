@@ -791,7 +791,8 @@ func loadBusinesses(dbPath string) ([]model.Business, error) {
 	rows, err := db.Query(`
 		SELECT name, rating, review_count, category, address, price_range,
 		       lat, lng, cid, phone, website, google_url, description, place_id,
-		       open_hours, thumbnail, categories, city, postal_code, country_code, query
+		       open_hours, thumbnail, COALESCE(photos, '') as photos,
+		       categories, city, postal_code, country_code, query
 		FROM businesses ORDER BY name`)
 	if err != nil {
 		return nil, err
@@ -804,7 +805,7 @@ func loadBusinesses(dbPath string) ([]model.Business, error) {
 		err := rows.Scan(
 			&b.Name, &b.Rating, &b.ReviewCount, &b.Category, &b.Address, &b.PriceRange,
 			&b.Lat, &b.Lng, &b.CID, &b.Phone, &b.Website, &b.GoogleURL, &b.Description, &b.PlaceID,
-			&b.OpenHours, &b.Thumbnail, &b.Categories, &b.City, &b.PostalCode, &b.CountryCode, &b.Query,
+			&b.OpenHours, &b.Thumbnail, &b.Photos, &b.Categories, &b.City, &b.PostalCode, &b.CountryCode, &b.Query,
 		)
 		if err != nil {
 			continue

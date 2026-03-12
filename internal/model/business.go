@@ -27,6 +27,7 @@ type Business struct {
 	PlaceID     string  `json:"place_id"`
 	OpenHours   string  `json:"open_hours"`
 	Thumbnail   string  `json:"thumbnail"`
+	Photos      string  `json:"photos"`
 	Categories  string  `json:"categories"`
 	City        string  `json:"city"`
 	PostalCode  string  `json:"postal_code"`
@@ -57,6 +58,7 @@ type SearchParams struct {
 	DBPath      string
 	Lang        string // hl parameter (default "es")
 	ProxyURL    string // HTTP/SOCKS5 proxy URL (optional)
+	FetchPhotos bool   // fetch all photo URLs per business
 	Debug       bool
 }
 

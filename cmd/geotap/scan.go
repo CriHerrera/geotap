@@ -41,6 +41,7 @@ func runScan(args []string) error {
 	fs.Float64Var(&params.MaxRating, "max-rating", 0, "Maximum star rating filter")
 	fs.StringVar(&params.Lang, "lang", "en", "Search language")
 	fs.StringVar(&params.ProxyURL, "proxy", "", "HTTP/SOCKS5 proxy URL")
+	fs.BoolVar(&params.FetchPhotos, "photos", false, "Fetch all photo URLs per business (slower)")
 	fs.BoolVar(&params.Debug, "debug", false, "Dump raw responses")
 
 	fs.Usage = func() {

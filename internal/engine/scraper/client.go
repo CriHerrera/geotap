@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	searchBaseURL = "https://www.google.com/search"
+	searchBaseURL  = "https://www.google.com/search"
+	previewBaseURL = "https://www.google.com/maps/preview/place"
 
 	maxRetries   = 3
 	baseBackoff  = 2 * time.Second
@@ -142,6 +143,45 @@ func (c *Client) SearchMap(sector model.Sector, query string, offset int) ([]byt
 	params.Set("pb", pb)
 
 	reqURL := searchBaseURL + "?" + params.Encode()
+
+	var lastErr error
+	for attempt := range maxRetries {
+		body, err := c.doRequest(reqURL)
+		if err == nil {
+			c.rateLimits.Store(0)
+			return body, nil
+		}
+
+		lastErr = err
+
+		if _, ok := err.(*RateLimitError); !ok {
+			return nil, err
+		}
+
+		c.rateLimits.Add(1)
+
+		backoff := baseBackoff * time.Duration(1<<uint(attempt))
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+		jitter := time.Duration(float64(backoff) * jitterFactor * rand.Float64())
+		time.Sleep(backoff + jitter)
+	}
+
+	return nil, lastErr
+}
+
+// FetchPlacePhotos fetches the place detail page for a given CID to extract photo URLs.
+func (c *Client) FetchPlacePhotos(cid string) ([]byte, error) {
+	pb := BuildPlacePB(cid)
+
+	params := url.Values{}
+	params.Set("authuser", "0")
+	params.Set("hl", c.lang)
+	params.Set("gl", "us")
+	params.Set("pb", pb)
+
+	reqURL := previewBaseURL + "?" + params.Encode()
 
 	var lastErr error
 	for attempt := range maxRetries {

@@ -61,6 +61,7 @@ func createSchema(db *sql.DB) error {
 		place_id TEXT,
 		open_hours TEXT,
 		thumbnail TEXT,
+		photos TEXT,
 		categories TEXT,
 		city TEXT,
 		postal_code TEXT,
@@ -78,6 +79,8 @@ func createSchema(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("creating schema: %w", err)
 	}
+	// Migration for existing databases: add photos column if missing
+	db.Exec("ALTER TABLE businesses ADD COLUMN photos TEXT DEFAULT ''")
 	return nil
 }
 
@@ -94,8 +97,8 @@ func (s *Store) InsertBatch(businesses []model.Business) (int, error) {
 		INSERT OR IGNORE INTO businesses
 		(name, rating, review_count, category, address, price_range, lat, lng, cid,
 		 phone, website, google_url, description, place_id,
-		 open_hours, thumbnail, categories, city, postal_code, country_code, query)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		 open_hours, thumbnail, photos, categories, city, postal_code, country_code, query)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 	`)
 	if err != nil {
 		tx.Rollback()
@@ -109,7 +112,7 @@ func (s *Store) InsertBatch(businesses []model.Business) (int, error) {
 			b.Name, b.Rating, b.ReviewCount, b.Category, b.Address, b.PriceRange,
 			b.Lat, b.Lng, b.CID, b.Phone, b.Website,
 			b.GoogleURL, b.Description, b.PlaceID,
-			b.OpenHours, b.Thumbnail, b.Categories,
+			b.OpenHours, b.Thumbnail, b.Photos, b.Categories,
 			b.City, b.PostalCode, b.CountryCode, b.Query,
 		)
 		if err != nil {

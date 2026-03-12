@@ -20,6 +20,7 @@ type Stats struct {
 	SectorsDone      atomic.Int64
 	BusinessesFound  atomic.Int64
 	BusinessesStored atomic.Int64
+	PhotosFetched    atomic.Int64
 	Errors           atomic.Int64
 	RateLimits       atomic.Int64
 }
@@ -248,6 +249,30 @@ func processJob(ctx context.Context, client *Client, store *storage.Store, job J
 		// Apply geographic filter
 		if len(opts.GeoFilter) > 0 {
 			businesses = filterByGeo(businesses, opts.GeoFilter)
+		}
+
+		// Fetch photos for each business if enabled
+		if params.FetchPhotos {
+			for i := range businesses {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+				if businesses[i].CID == "" {
+					continue
+				}
+				photoBody, err := client.FetchPlacePhotos(businesses[i].CID)
+				if err != nil {
+					logger.Printf("PHOTO_ERROR cid=%s err=%v", businesses[i].CID, err)
+					continue
+				}
+				if photos := ParsePlacePhotos(photoBody); photos != "" {
+					businesses[i].Photos = photos
+					stats.PhotosFetched.Add(1)
+				}
+				time.Sleep(200 * time.Millisecond)
+			}
 		}
 
 		// Notify callback with filtered results
