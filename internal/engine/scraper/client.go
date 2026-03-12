@@ -1,9 +1,11 @@
 package scraper
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
+	"html"
 	"io"
 	"math/rand/v2"
 	"net"
@@ -130,6 +132,11 @@ func NewClient(lang, proxyURL string, zoom int) *Client {
 	}
 }
 
+// HTTPClient returns the underlying *http.Client for direct use (e.g., photo downloads).
+func (c *Client) HTTPClient() *http.Client {
+	return c.http
+}
+
 // SearchMap performs a Maps search (tbm=map) with retry and exponential backoff.
 func (c *Client) SearchMap(sector model.Sector, query string, offset int) ([]byte, error) {
 	pb := BuildPB(sector.Lat, sector.Lng, c.zoom, offset)
@@ -175,11 +182,25 @@ func (c *Client) ConsecutiveRateLimits() int64 {
 	return c.rateLimits.Load()
 }
 
-// FetchPlace fetches the Google Maps place detail page for a given Place ID.
-// Returns the raw HTML body which contains embedded JSON with photo URLs.
+// FetchPlace fetches photo data for a Google Maps place.
+// It first loads the place HTML page to extract the preview endpoint URL,
+// then fetches that endpoint which returns JSON containing photo URLs.
 func (c *Client) FetchPlace(placeID string) ([]byte, error) {
-	reqURL := "https://www.google.com/maps/place/?q=place_id:" + placeID + "&hl=" + c.lang
-	return c.doRequestWithRetry(reqURL)
+	pageURL := "https://www.google.com/maps/place/?q=place_id:" + placeID + "&hl=" + c.lang
+	html, err := c.doRequestWithRetry(pageURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract the preview endpoint from <link rel="preload" as="fetch" href="...">
+	previewPath := extractPreviewURL(html)
+	if previewPath == "" {
+		// Fallback: return the HTML itself for the parser to try
+		return html, nil
+	}
+
+	previewURL := "https://www.google.com" + previewPath
+	return c.doRequestWithRetry(previewURL)
 }
 
 // doRequestWithRetry wraps doRequest with the same retry logic as SearchMap.
@@ -240,4 +261,36 @@ func (c *Client) doRequest(reqURL string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// extractPreviewURL finds the /maps/preview/place endpoint from a Maps HTML page.
+// Google embeds it in a <link rel="preload" as="fetch" href="..."> tag.
+func extractPreviewURL(htmlBody []byte) string {
+	// Look for: href="/maps/preview/place?..." as="fetch"
+	marker := []byte(`/maps/preview/place?`)
+	idx := bytes.Index(htmlBody, marker)
+	if idx < 0 {
+		return ""
+	}
+
+	// Walk backward to find the opening quote
+	start := idx
+	for start > 0 && htmlBody[start-1] != '"' && htmlBody[start-1] != '\'' {
+		start--
+		if idx-start > 20 {
+			// Too far back, just use the marker position
+			start = idx
+			break
+		}
+	}
+
+	// Walk forward to find the closing quote
+	end := idx + len(marker)
+	for end < len(htmlBody) && htmlBody[end] != '"' && htmlBody[end] != '\'' {
+		end++
+	}
+
+	raw := string(htmlBody[start:end])
+	// Unescape HTML entities (&amp; → &)
+	return html.UnescapeString(raw)
 }

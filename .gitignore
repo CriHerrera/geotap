@@ -7,6 +7,8 @@
 *.log
 *.csv
 projects/
+test_*/
+debug_*
 
 # PoC
 poc/

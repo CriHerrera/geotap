@@ -57,7 +57,7 @@ func GenerateRadiusGrid(centerLat, centerLng, radiusKm float64, zoom int) []mode
 	// Filter sectors outside the radius
 	var filtered []model.Sector
 	for _, s := range all {
-		if haversineKm(centerLat, centerLng, s.Lat, s.Lng) <= radiusKm {
+		if HaversineKm(centerLat, centerLng, s.Lat, s.Lng) <= radiusKm {
 			filtered = append(filtered, s)
 		}
 	}
@@ -65,7 +65,8 @@ func GenerateRadiusGrid(centerLat, centerLng, radiusKm float64, zoom int) []mode
 	return filtered
 }
 
-func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
+// HaversineKm returns the great-circle distance in km between two points.
+func HaversineKm(lat1, lng1, lat2, lng2 float64) float64 {
 	const earthRadiusKm = 6371.0
 	dLat := (lat2 - lat1) * math.Pi / 180.0
 	dLng := (lng2 - lng1) * math.Pi / 180.0

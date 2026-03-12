@@ -7,28 +7,55 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// Similarity returns the Jaro-Winkler similarity (0.0–1.0) between two strings.
-// Both strings are normalized: lowercased, accents stripped, extra whitespace collapsed.
-func Similarity(a, b string) float64 {
-	a = normalize(a)
-	b = normalize(b)
+// Normalize lowercases, removes accents (NFD decomposition), strips punctuation
+// (dots, hyphens, etc.), and collapses whitespace. Exported for use outside.
+func Normalize(s string) string {
+	s = strings.ToLower(s)
+	var buf strings.Builder
+	for _, r := range norm.NFD.String(s) {
+		if unicode.Is(unicode.Mn, r) {
+			continue // strip accents
+		}
+		// Replace punctuation (dots, hyphens, underscores, etc.) with space
+		if r == '.' || r == '-' || r == '_' || r == '/' || r == '(' || r == ')' || r == '#' {
+			buf.WriteRune(' ')
+			continue
+		}
+		buf.WriteRune(r)
+	}
+	return strings.Join(strings.Fields(buf.String()), " ")
+}
+
+// RemoveStopWords removes the given stop words from a normalized string.
+// Returns the cleaned string. If all words are stop words, returns the original.
+func RemoveStopWords(s string, stopWords map[string]bool) string {
+	if len(stopWords) == 0 {
+		return s
+	}
+	words := strings.Fields(s)
+	var kept []string
+	for _, w := range words {
+		if !stopWords[w] {
+			kept = append(kept, w)
+		}
+	}
+	result := strings.Join(kept, " ")
+	if result == "" {
+		return s
+	}
+	return result
+}
+
+// Similarity returns the Jaro-Winkler similarity (0.0-1.0) between two strings.
+// Both strings are normalized and stop words are removed before comparison.
+// The stopWords map can be nil to skip stop word removal.
+func Similarity(a, b string, stopWords map[string]bool) float64 {
+	a = RemoveStopWords(Normalize(a), stopWords)
+	b = RemoveStopWords(Normalize(b), stopWords)
 	if a == b {
 		return 1.0
 	}
 	return jaroWinkler(a, b)
-}
-
-// normalize lowercases, removes accents (NFD decomposition), and collapses whitespace.
-func normalize(s string) string {
-	s = strings.ToLower(s)
-	// NFD decompose then strip combining marks (accents)
-	var buf strings.Builder
-	for _, r := range norm.NFD.String(s) {
-		if !unicode.Is(unicode.Mn, r) { // Mn = nonspacing mark (accents)
-			buf.WriteRune(r)
-		}
-	}
-	return strings.Join(strings.Fields(buf.String()), " ")
 }
 
 // jaro computes the Jaro similarity between two strings.
@@ -94,7 +121,6 @@ func jaro(s1, s2 string) float64 {
 func jaroWinkler(s1, s2 string) float64 {
 	j := jaro(s1, s2)
 
-	// Common prefix up to 4 characters
 	r1 := []rune(s1)
 	r2 := []rune(s2)
 	prefixLen := 0
